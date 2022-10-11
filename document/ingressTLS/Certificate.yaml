@@ -1,0 +1,14 @@
+#  这个其实就是创建一张证书出来，然后其他资源可以直接引用这张证书
+#ingresss 直接使用的是入口注入apiVersion: cert-manager.io/v1
+#这是一个签发证书到本地secret示例
+kind: Certificate
+metadata:
+  name: test-mydomain-com
+  namespace: nginx
+spec:
+  dnsNames:
+    - test.mydomain.com # 要签发证书的域名
+  issuerRef:
+    kind: Issuer
+    name: letsencrypt-http01 # 引用 Issuer
+  secretName: test-mydomain-com-tls # 最终签发出来的证书会保存在这个 Secret 里面
