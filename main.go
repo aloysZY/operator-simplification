@@ -74,57 +74,57 @@ func main() {
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
 	// 本地测试webhook
-	options := ctrl.Options{
-		Scheme:                 scheme,
-		MetricsBindAddress:     metricsAddr,
-		Port:                   9443,
-		HealthProbeBindAddress: probeAddr,
-		LeaderElection:         enableLeaderElection,
-		LeaderElectionID:       "48e422bc.tech",
-	}
-	if os.Getenv("ENVIRONMENT") == "DEV" {
-		path, err := os.Getwd()
-		if err != nil {
-			setupLog.Error(err, "unable to get work dir")
-			os.Exit(1)
-		}
-		options.CertDir = path + "/certs"
-	}
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), options)
-	if err != nil {
-		setupLog.Error(err, "unable to start manager")
-		os.Exit(1)
-	}
-
-	// 创建Manager，传入scheme和其他参数
-	// mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
-	// 	// 初始化scheme
-	// 	Scheme: scheme,
-	// 	// 资源探针端口
-	// 	MetricsBindAddress: metricsAddr,
-	// 	// webhook服务器服务的端口号
-	// 	Port: 9443,
-	// 	// 健康检查端口
+	// options := ctrl.Options{
+	// 	Scheme:                 scheme,
+	// 	MetricsBindAddress:     metricsAddr,
+	// 	Port:                   9443,
 	// 	HealthProbeBindAddress: probeAddr,
-	// 	// 高可用设置参数，还不知道什么意思
-	// 	LeaderElection:   enableLeaderElection,
-	// 	LeaderElectionID: "48e422bc.tech",
-	// 	// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
-	// 	// when the Manager ends. This requires the binary to immediately end when the
-	// 	// Manager is stopped, otherwise, this setting is unsafe. Setting this significantly
-	// 	// speeds up voluntary leader transitions as the new leader don't have to wait
-	// 	// LeaseDuration time first.
-	// 	//
-	// 	// In the default scaffold provided, the program ends immediately after
-	// 	// the manager stops, so would be fine to enable this option. However,
-	// 	// if you are doing or is intended to do any operation such as perform cleanups
-	// 	// after the manager stops then its usage might be unsafe.
-	// 	// LeaderElectionReleaseOnCancel: true,
-	// })
+	// 	LeaderElection:         enableLeaderElection,
+	// 	LeaderElectionID:       "48e422bc.tech",
+	// }
+	// if os.Getenv("ENVIRONMENT") == "DEV" {
+	// 	path, err := os.Getwd()
+	// 	if err != nil {
+	// 		setupLog.Error(err, "unable to get work dir")
+	// 		os.Exit(1)
+	// 	}
+	// 	options.CertDir = path + "/certs"
+	// }
+	// mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), options)
 	// if err != nil {
 	// 	setupLog.Error(err, "unable to start manager")
 	// 	os.Exit(1)
 	// }
+
+	// 创建Manager，传入scheme和其他参数
+	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+		// 初始化scheme
+		Scheme: scheme,
+		// 资源探针端口
+		MetricsBindAddress: metricsAddr,
+		// webhook服务器服务的端口号
+		Port: 9443,
+		// 健康检查端口
+		HealthProbeBindAddress: probeAddr,
+		// 高可用设置参数，还不知道什么意思
+		LeaderElection:   enableLeaderElection,
+		LeaderElectionID: "48e422bc.tech",
+		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
+		// when the Manager ends. This requires the binary to immediately end when the
+		// Manager is stopped, otherwise, this setting is unsafe. Setting this significantly
+		// speeds up voluntary leader transitions as the new leader don't have to wait
+		// LeaseDuration time first.
+		//
+		// In the default scaffold provided, the program ends immediately after
+		// the manager stops, so would be fine to enable this option. However,
+		// if you are doing or is intended to do any operation such as perform cleanups
+		// after the manager stops then its usage might be unsafe.
+		// LeaderElectionReleaseOnCancel: true,
+	})
+	if err != nil {
+		setupLog.Error(err, "unable to start manager")
+		os.Exit(1)
+	}
 
 	// Reconciler添加Manager
 	// AloysReconciler是实现的具体的 controller
