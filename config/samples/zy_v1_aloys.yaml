@@ -6,61 +6,77 @@ spec:
   # TODO(user): Add fields here
   deployment:
     replicas: 1
-    image: docker.io/alanzy/aloysnginx:1.0
-    port: 80
-    mountPath: /nginx/conf/nginx.conf
-    limits:
-      cpu: 50m
-      memory: 128Mi
-    request:
-      cpu: 20m
-      memory: 64Mi
+    containers:
+      #      想了一下，还是添加一个名字，svc 暴露的时候添加需要暴露的container 名字比较好理解
+      - name: aloysnginx
+        image: docker.io/alanzy/aloysnginx:1.0
+        port: 8080
+        mountPath: /nginx/conf/nginx.conf
+        limits:
+          cpu: 50m
+          memory: 128Mi
+        request:
+          cpu: 20m
+          memory: 64Mi
+      - name: nginx
+        image: nginx
+        port: 80
+        limits:
+          cpu: 50m
+          memory: 128Mi
+        request:
+          cpu: 20m
+          memory: 64Mi
   service:
     enable: true
+    #设置需要暴露的容器端口,写死了就让暴露一个
+    name: aloysnginx
   ingress:
     enable: true
     host: zy.aloys.tech
   configMap:
-    cmDate: |
-      #user  nobody;
+    - name: aloysnginx
+      cmDate: |
+        #user  nobody;
         worker_processes  1;
         events {
-        worker_connections  1024;
-      }
+          worker_connections  1024;
+        }
         http {
-        include       mime.types;
-        default_type  application/octet-stream;
-      
-        #log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
-        #                  '$status $body_bytes_sent "$http_referer" '
-        #                  '"$http_user_agent" "$http_x_forwarded_for"';
-      
-        #access_log  logs/access.log  main;
-      
-        sendfile        on;
-        #tcp_nopush     on;
-      
-        #keepalive_timeout  0;
-        keepalive_timeout  65;
-      
-        #gzip  on;
-      
-        server {
-        listen       80;
-        server_name  localhost;
-      
-        #charset koi8-r;
-      
-        #access_log  logs/host.access.log  main;
-      
-        location / {
-        root   html;
-        index  index.html index.htm;
+          include       mime.types;
+          default_type  application/octet-stream;
+        
+          log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                            '$status $body_bytes_sent "$http_referer" '
+                            '"$http_user_agent" "$http_x_forwarded_for"';
+        
+          #access_log  logs/access.log  main;
+          access_log /dev/stdout main;
+        
+          sendfile        on;
+          #tcp_nopush     on;
+        
+          #keepalive_timeout  0;
+          keepalive_timeout  65;
+        
+          #gzip  on;
+        
+          server {
+            listen       80;
+            server_name  localhost;
+        
+            #charset koi8-r;
+        
+            #access_log  logs/host.access.log  main;
+        
+            location / {
+              root   html;
+              index  index.html index.htm;
+            }
+        
+            error_page   500 502 503 504  /50x.html;
+              location = /50x.html {
+              root   html;
+            }
+          }
         }
-      
-        error_page   500 502 503 504  /50x.html;
-        location = /50x.html {
-        root   html;
-        }
-      }
-      }

@@ -13,51 +13,56 @@ import (
 func NewDeployment(aloys *zyv1.Aloys) *appsv1.Deployment {
 	var label = map[string]string{"aloys": aloys.Name}
 	var aloysContainers []corev1.Container
-
-	var aloysContainersPort []corev1.ContainerPort
-	p := corev1.ContainerPort{ContainerPort: aloys.Spec.Deployment.Port}
-	aloysContainersPort = append(aloysContainersPort, p)
-
-	var aloysVolumeMount []corev1.VolumeMount
-	fileName := strings.Split(aloys.Spec.Deployment.MountPath, "/")
-	vm := &corev1.VolumeMount{
-		Name:      "vm-" + aloys.Name,
-		ReadOnly:  true,
-		MountPath: aloys.Spec.Deployment.MountPath,
-		SubPath:   fileName[len(fileName)-1],
-	}
-	aloysVolumeMount = append(aloysVolumeMount, *vm)
-
 	var aloysVolume []corev1.Volume
-	v := &corev1.Volume{
-		Name: "vm-" + aloys.Name,
-		VolumeSource: corev1.VolumeSource{
-			ConfigMap: &corev1.ConfigMapVolumeSource{LocalObjectReference: corev1.LocalObjectReference{Name: "cm-" + aloys.Name}}},
-	}
-	aloysVolume = append(aloysVolume, *v)
-	cName := strings.Split(aloys.Spec.Deployment.Image, ":")[0]
-	cName2 := strings.Split(cName, "/")
-	cname3 := cName2[len(cName2)-1]
 
-	d := &corev1.Container{
+	for _, y := range aloys.Spec.Deployment.Containers {
+		var aloysVolumeMount []corev1.VolumeMount
+		var aloysContainersPort []corev1.ContainerPort
 
-		Name:            cname3,
-		Image:           aloys.Spec.Deployment.Image,
-		Ports:           aloysContainersPort,
-		ImagePullPolicy: corev1.PullIfNotPresent,
-		Resources: corev1.ResourceRequirements{
-			Limits: corev1.ResourceList{
-				corev1.ResourceCPU:    aloys.Spec.Deployment.Limits.Cpu,
-				corev1.ResourceMemory: aloys.Spec.Deployment.Limits.Memory,
+		// 这不需要在进行 for 循环了，因为每次都是一个单独的
+		// 设置端口
+		p := corev1.ContainerPort{ContainerPort: y.Port}
+		aloysContainersPort = append(aloysContainersPort, p)
+
+		// 如果没设置MountPath就不挂载
+		if y.MountPath != "" {
+			// 容器内挂载路径和参数
+			fileName := strings.Split(y.MountPath, "/")
+			vm := &corev1.VolumeMount{
+				Name:      "vm-" + y.Name,
+				ReadOnly:  true,
+				MountPath: y.MountPath,
+				SubPath:   fileName[len(fileName)-1],
+			}
+			aloysVolumeMount = append(aloysVolumeMount, *vm)
+
+			v := &corev1.Volume{
+				Name: "vm-" + y.Name,
+				VolumeSource: corev1.VolumeSource{
+					ConfigMap: &corev1.ConfigMapVolumeSource{LocalObjectReference: corev1.LocalObjectReference{Name: "cm-" + aloys.Name + "-" + y.Name}}},
+			}
+			aloysVolume = append(aloysVolume, *v)
+		}
+
+		d := &corev1.Container{
+			Name:            y.Name,
+			Image:           y.Image,
+			Ports:           aloysContainersPort,
+			ImagePullPolicy: corev1.PullIfNotPresent,
+			Resources: corev1.ResourceRequirements{
+				Limits: corev1.ResourceList{
+					corev1.ResourceCPU:    y.Limits.Cpu,
+					corev1.ResourceMemory: y.Limits.Memory,
+				},
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU:    y.Request.Cpu,
+					corev1.ResourceMemory: y.Request.Memory,
+				},
 			},
-			Requests: corev1.ResourceList{
-				corev1.ResourceCPU:    aloys.Spec.Deployment.Request.Cpu,
-				corev1.ResourceMemory: aloys.Spec.Deployment.Request.Memory,
-			},
-		},
-		VolumeMounts: aloysVolumeMount,
+			VolumeMounts: aloysVolumeMount,
+		}
+		aloysContainers = append(aloysContainers, *d)
 	}
-	aloysContainers = append(aloysContainers, *d)
 
 	deploy := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{

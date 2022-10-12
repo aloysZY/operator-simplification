@@ -17,6 +17,8 @@ limitations under the License.
 package v1
 
 import (
+	"strconv"
+
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -50,6 +52,10 @@ func (r *Aloys) Default() {
 	if r.Spec.Ingress.Path == "" && r.Spec.Ingress.Enable {
 		r.Spec.Ingress.Path = "/"
 	}
+	if strconv.Itoa(int(r.Spec.Deployment.Replicas)) == "" {
+		r.Spec.Deployment.Replicas = 1
+	}
+
 }
 
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
@@ -71,6 +77,9 @@ func (r *Aloys) ValidateCreate() error {
 	if err := r.ValidateIngress(); err != nil {
 		return err
 	}
+	if err := r.ValidateConfigMap(); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -86,6 +95,9 @@ func (r *Aloys) ValidateUpdate(old runtime.Object) error {
 	if err := r.ValidateIngress(); err != nil {
 		return err
 	}
+	if err := r.ValidateConfigMap(); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -99,6 +111,9 @@ func (r *Aloys) ValidateDelete() error {
 		return err
 	}
 	if err := r.ValidateIngress(); err != nil {
+		return err
+	}
+	if err := r.ValidateConfigMap(); err != nil {
 		return err
 	}
 	return nil
@@ -128,6 +143,23 @@ func (r *Aloys) ValidateIngress() error {
 					"host should be set when enable_ingress is true"),
 			},
 		)
+	}
+	return nil
+}
+
+func (r *Aloys) ValidateConfigMap() error {
+	for _, y := range r.Spec.Deployment.Containers {
+		for _, v := range r.Spec.ConfigMap {
+			if v.Name == y.Name && y.MountPath == "" {
+				return errors.NewInvalid(GroupVersion.WithKind("Aloys").GroupKind(), r.Name,
+					field.ErrorList{
+						field.Invalid(field.NewPath("MountPath"),
+							r.Spec.Ingress.Host,
+							"MountPath should be set when configName set "),
+					},
+				)
+			}
+		}
 	}
 	return nil
 }

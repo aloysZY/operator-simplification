@@ -23,10 +23,10 @@ spec:
         - jsonPath: .spec.deployment.replicas
           name: Replicas
           type: integer
-        - jsonPath: .spec.deployment.port
+        - jsonPath: .spec.deployment.containers[0].port
           name: Port
           type: integer
-        - jsonPath: .spec.deployment.image
+        - jsonPath: .spec.deployment.containers[0].image
           name: Image
           type: string
         - jsonPath: .metadata.creationTimestamp
@@ -55,61 +55,80 @@ spec:
                 configMap:
                   description: Foo is an example field of Aloys. Edit aloys_types.go
                     to remove/update Foo string `json:"foo,omitempty"`
-                  properties:
-                    cmDate:
-                      type: string
-                  required:
-                    - cmDate
-                  type: object
+                  items:
+                    properties:
+                      cmDate:
+                        type: string
+                      name:
+                        type: string
+                    required:
+                      - cmDate
+                      - name
+                    type: object
+                  type: array
                 deployment:
                   properties:
-                    image:
-                      type: string
-                    limits:
-                      properties:
-                        cpu:
-                          anyOf:
-                            - type: integer
-                            - type: string
-                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                          x-kubernetes-int-or-string: true
-                        memory:
-                          anyOf:
-                            - type: integer
-                            - type: string
-                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                          x-kubernetes-int-or-string: true
-                      type: object
-                    mountPath:
-                      pattern: ^/
-                      type: string
-                    port:
-                      description: crd 字段规范设置 +kubebuilder:validation:Maximum=65536
-                        +kubebuilder:validation:Minimum=1024
-                      format: int32
-                      type: integer
+                    containers:
+                      items:
+                        properties:
+                          image:
+                            type: string
+                          limits:
+                            properties:
+                              cpu:
+                                anyOf:
+                                  - type: integer
+                                  - type: string
+                                description: // +kubebuilder:default=20m
+                                pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                x-kubernetes-int-or-string: true
+                              memory:
+                                anyOf:
+                                  - type: integer
+                                  - type: string
+                                description: // +kubebuilder:default=64Mi
+                                pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                x-kubernetes-int-or-string: true
+                            type: object
+                          mountPath:
+                            description: 暂时先让他可以为空 // +kubebuilder:validation:Pattern:=^/
+                            type: string
+                          name:
+                            type: string
+                          port:
+                            description: crd 字段规范设置 +kubebuilder:validation:Maximum=65536
+                              +kubebuilder:validation:Minimum=1024
+                            format: int32
+                            type: integer
+                          request:
+                            properties:
+                              cpu:
+                                anyOf:
+                                  - type: integer
+                                  - type: string
+                                description: // +kubebuilder:default=20m
+                                pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                x-kubernetes-int-or-string: true
+                              memory:
+                                anyOf:
+                                  - type: integer
+                                  - type: string
+                                description: // +kubebuilder:default=64Mi
+                                pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                                x-kubernetes-int-or-string: true
+                            type: object
+                        required:
+                          - image
+                          - name
+                          - port
+                        type: object
+                      type: array
                     replicas:
+                      default: 1
                       format: int32
                       type: integer
-                    request:
-                      properties:
-                        cpu:
-                          anyOf:
-                            - type: integer
-                            - type: string
-                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                          x-kubernetes-int-or-string: true
-                        memory:
-                          anyOf:
-                            - type: integer
-                            - type: string
-                          pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                          x-kubernetes-int-or-string: true
-                      type: object
                   required:
-                    - image
-                    - mountPath
-                    - port
+                    - containers
                     - replicas
                   type: object
                 ingress:
@@ -135,6 +154,8 @@ spec:
                         - true
                         - false
                       type: boolean
+                    name:
+                      type: string
                   required:
                     - enable
                   type: object

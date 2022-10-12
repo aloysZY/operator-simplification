@@ -81,23 +81,26 @@ func (r *AloysReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	// 这里开始用模板 Unmarshal进行反向解析，现在直接创建相关资源后补全相关设置信息
 
 	// cm
+	// for 循环创建 cm
 	cm := templateCm.NewConfigMap(&aloys)
-	if err := ctrl.SetControllerReference(&aloys, cm, r.Scheme); err != nil {
-		return ctrl.Result{}, err
-	}
+	for _, v := range cm {
+		if err := ctrl.SetControllerReference(&aloys, v, r.Scheme); err != nil {
+			return ctrl.Result{}, err
+		}
 
-	c := &corev1.ConfigMap{}
-	if err := r.Get(ctx, types.NamespacedName{Name: cm.Name, Namespace: cm.Namespace}, c); err != nil {
-		if errors.IsNotFound(err) {
-			if err := r.Create(ctx, cm); err != nil {
-				aloysLog.Error(err, "create cm failed")
+		c := &corev1.ConfigMap{}
+		if err := r.Get(ctx, types.NamespacedName{Name: v.Name, Namespace: v.Namespace}, c); err != nil {
+			if errors.IsNotFound(err) {
+				if err := r.Create(ctx, v); err != nil {
+					aloysLog.Error(err, "create cm failed")
+					return ctrl.Result{}, err
+				}
+			}
+		} else {
+			if err := r.Update(ctx, v); err != nil {
+				aloysLog.Error(err, "update cm failed")
 				return ctrl.Result{}, err
 			}
-		}
-	} else {
-		if err := r.Update(ctx, cm); err != nil {
-			aloysLog.Error(err, "update cm failed")
-			return ctrl.Result{}, err
 		}
 	}
 

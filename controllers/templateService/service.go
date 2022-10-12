@@ -11,14 +11,18 @@ import (
 func NewService(aloys *zyv1.Aloys) *corev1.Service {
 	var label = map[string]string{"aloys": aloys.Name}
 	var aloysPort []corev1.ServicePort
-
-	s := corev1.ServicePort{
-		Name:       "http",
-		Protocol:   "TCP",
-		Port:       aloys.Spec.Deployment.Port,
-		TargetPort: intstr.IntOrString{IntVal: aloys.Spec.Deployment.Port},
+	for _, v := range aloys.Spec.Deployment.Containers {
+		if aloys.Spec.Service.Name == v.Name {
+			s := corev1.ServicePort{
+				// Name是固定的，之后选择那个 contration需要暴露都ing 都不需要修改
+				Name:       "http",
+				Protocol:   "TCP",
+				Port:       v.Port,
+				TargetPort: intstr.IntOrString{IntVal: v.Port},
+			}
+			aloysPort = append(aloysPort, s)
+		}
 	}
-	aloysPort = append(aloysPort, s)
 
 	service := &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{

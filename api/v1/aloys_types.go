@@ -25,21 +25,30 @@ import (
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
 type AloysResources struct {
-	Cpu    resource.Quantity `json:"cpu,omitempty"`
+	/*	// +kubebuilder:default=20m*/
+	Cpu resource.Quantity `json:"cpu,omitempty,omitempty"`
+	/*	// +kubebuilder:default=64Mi*/
 	Memory resource.Quantity `json:"memory,omitempty"`
 }
 
-type AloysDeployment struct {
-	Replicas int32  `json:"replicas"`
-	Image    string `json:"image"`
+type AloysContainers struct {
+	Name  string `json:"name"`
+	Image string `json:"image"`
 	// crd 字段规范设置
 	/*	+kubebuilder:validation:Maximum=65536
 		+kubebuilder:validation:Minimum=1024*/
 	Port    int32          `json:"port"`
 	Limits  AloysResources `json:"limits,omitempty"`
 	Request AloysResources `json:"request,omitempty"`
-	// +kubebuilder:validation:Pattern:=^/
-	MountPath string `json:"mountPath"`
+	// 暂时先让他可以为空
+	/*	// +kubebuilder:validation:Pattern:=^/*/
+	MountPath string `json:"mountPath,omitempty"`
+}
+
+type AloysDeployment struct {
+	//  +kubebuilder:default=1
+	Replicas   int32              `json:"replicas"`
+	Containers []*AloysContainers `json:"containers"`
 }
 
 type AloysIngress struct {
@@ -52,11 +61,13 @@ type AloysIngress struct {
 }
 
 type AloysService struct {
+	Name string `json:"name,omitempty"`
 	// +kubebuilder:validation:Enum:={true,false}
 	Enable bool `json:"enable"`
 }
 
 type AloysCM struct {
+	Name   string `json:"name"`
 	CmDate string `json:"cmDate"`
 }
 
@@ -67,7 +78,7 @@ type AloysSpec struct {
 
 	// Foo is an example field of Aloys. Edit aloys_types.go to remove/update
 	// Foo string `json:"foo,omitempty"`
-	ConfigMap  AloysCM         `json:"configMap"`
+	ConfigMap  []*AloysCM      `json:"configMap"`
 	Deployment AloysDeployment `json:"deployment"`
 	Service    AloysService    `json:"service"`
 	Ingress    AloysIngress    `json:"ingress"`
@@ -79,13 +90,13 @@ type AloysStatus struct {
 	// Important: Run "make" to regenerate code after modifying this file
 }
 
-// crd 相关权限设置
+// crd 相关权限设置,containers是一个切片了，需要指定显示的container下标
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:categories="all",path="aloys",shortName="zy",singular="zy"
 // +kubebuilder:printcolumn:name="Replicas",type="integer",JSONPath=".spec.deployment.replicas"
-// +kubebuilder:printcolumn:name="Port",type="integer",JSONPath=".spec.deployment.port"
-// +kubebuilder:printcolumn:name="Image",type="string",JSONPath=".spec.deployment.image"
+// +kubebuilder:printcolumn:name="Port",type="integer",JSONPath=".spec.deployment.containers[0].port"
+// +kubebuilder:printcolumn:name="Image",type="string",JSONPath=".spec.deployment.containers[0].image"
 // +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 // Aloys is the Schema for the aloys API
