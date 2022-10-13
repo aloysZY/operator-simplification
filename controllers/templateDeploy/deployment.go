@@ -16,32 +16,40 @@ func NewDeployment(aloys *zyv1.Aloys) *appsv1.Deployment {
 	var aloysVolume []corev1.Volume
 
 	for _, y := range aloys.Spec.Deployment.Containers {
-		var aloysVolumeMount []corev1.VolumeMount
 		var aloysContainersPort []corev1.ContainerPort
-
 		// 这不需要在进行 for 循环了，因为每次都是一个单独的
 		// 设置端口
 		p := corev1.ContainerPort{ContainerPort: y.Port}
 		aloysContainersPort = append(aloysContainersPort, p)
 
+		var aloysVolumeMount []corev1.VolumeMount
 		// 如果没设置MountPath就不挂载
-		if y.MountPath != "" {
-			// 容器内挂载路径和参数
-			fileName := strings.Split(y.MountPath, "/")
-			vm := &corev1.VolumeMount{
-				Name:      "vm-" + y.Name,
-				ReadOnly:  true,
-				MountPath: y.MountPath,
-				SubPath:   fileName[len(fileName)-1],
-			}
-			aloysVolumeMount = append(aloysVolumeMount, *vm)
+		for _, v := range y.MountPath {
+			if v != "" {
+				// 容器内挂载路径和参数
+				fileName := strings.Split(v, "/")
+				fileSubPath := fileName[len(fileName)-1]
+				volumeMountName := strings.Split(fileSubPath, ".")[0]
+				vm := &corev1.VolumeMount{
+					// 如果一个 deploy 多个 contraction，挂在的文件名称相同就有问题，所以这里添加一个 contraction的名字
+					Name:      "vm-" + y.Name + "-" + volumeMountName,
+					ReadOnly:  true,
+					MountPath: v,
+					SubPath:   fileSubPath,
+				}
+				aloysVolumeMount = append(aloysVolumeMount, *vm)
 
-			v := &corev1.Volume{
-				Name: "vm-" + y.Name,
-				VolumeSource: corev1.VolumeSource{
-					ConfigMap: &corev1.ConfigMapVolumeSource{LocalObjectReference: corev1.LocalObjectReference{Name: "cm-" + aloys.Name + "-" + y.Name}}},
+				v := &corev1.Volume{
+					Name: "vm-" + y.Name + "-" + volumeMountName,
+					VolumeSource: corev1.VolumeSource{
+						ConfigMap: &corev1.ConfigMapVolumeSource{
+							LocalObjectReference: corev1.LocalObjectReference{
+								// cm的名字
+								Name: "cm-" + aloys.Name + "-" + volumeMountName,
+							}}},
+				}
+				aloysVolume = append(aloysVolume, *v)
 			}
-			aloysVolume = append(aloysVolume, *v)
 		}
 
 		d := &corev1.Container{

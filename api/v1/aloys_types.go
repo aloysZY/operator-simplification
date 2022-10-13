@@ -42,7 +42,7 @@ type AloysContainers struct {
 	Request AloysResources `json:"request,omitempty"`
 	// 暂时先让他可以为空
 	/*	// +kubebuilder:validation:Pattern:=^/*/
-	MountPath string `json:"mountPath,omitempty"`
+	MountPath []string `json:"mountPath,omitempty"`
 }
 
 type AloysDeployment struct {
@@ -67,8 +67,8 @@ type AloysService struct {
 }
 
 type AloysCM struct {
-	Name   string `json:"name"`
-	CmDate string `json:"cmDate"`
+	CmKey  string `json:"cmKey,omitempty"`
+	CmDate string `json:"cmDate,omitempty"`
 }
 
 // AloysSpec defines the desired state of Aloys
@@ -78,7 +78,7 @@ type AloysSpec struct {
 
 	// Foo is an example field of Aloys. Edit aloys_types.go to remove/update
 	// Foo string `json:"foo,omitempty"`
-	ConfigMap  []*AloysCM      `json:"configMap"`
+	ConfigMap  []*AloysCM      `json:"configMap,omitempty"`
 	Deployment AloysDeployment `json:"deployment"`
 	Service    AloysService    `json:"service"`
 	Ingress    AloysIngress    `json:"ingress"`

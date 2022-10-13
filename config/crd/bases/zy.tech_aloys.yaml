@@ -61,12 +61,6 @@ spec:
                         type: string
                       cmKey:
                         type: string
-                      name:
-                        type: string
-                    required:
-                      - cmDate
-                      - cmKey
-                      - name
                     type: object
                   type: array
                 deployment:
@@ -165,7 +159,6 @@ spec:
                     - enable
                   type: object
               required:
-                - configMap
                 - deployment
                 - ingress
                 - service

@@ -14,7 +14,9 @@ limitations under the License.
 package v1
 
 import (
+	"sort"
 	"strconv"
+	"strings"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -39,6 +41,8 @@ func (r *Aloys) SetupWebhookWithManager(mgr ctrl.Manager) error {
 
 var _ webhook.Defaulter = &Aloys{}
 
+// 经过测试先验证Validate在进行Default
+
 // Default implements webhook.Defaulter so a webhook will be registered for the type
 func (r *Aloys) Default() {
 	aloyslog.Info("default", "name", r.Name)
@@ -53,6 +57,25 @@ func (r *Aloys) Default() {
 		r.Spec.Deployment.Replicas = 1
 	}
 
+	for _, v := range r.Spec.Deployment.Containers {
+		if v.Limits.Cpu.String() == "0" {
+			v.Limits.Cpu = v.Request.Cpu
+		}
+
+		if v.Limits.Memory.String() == "0" {
+			v.Limits.Memory = v.Request.Memory
+		}
+		// 这里判断传入的是不是Limits就行了,但是有一个误区,我创建 deploy 的模板，就是contraction创建的时候Request没设置就是 0了,而不是没设置
+		// 这里针对这种情况显示的设置一下
+		// 添加这个设置 QOS 是Guaranteed，否则是Burstable
+		// 其实可以添加 namespace或者 tag 来额外判断是否这样设置
+		if v.Request.Cpu.String() == "0" {
+			v.Request.Cpu = v.Limits.Cpu
+		}
+		if v.Request.Memory.String() == "0" {
+			v.Request.Memory = v.Limits.Memory
+		}
+	}
 }
 
 // TODO(user): change verbs to "verbs=create;update;delete" if you want to enable deletion validation.
@@ -77,6 +100,9 @@ func (r *Aloys) ValidateCreate() error {
 	if err := r.ValidateConfigMap(); err != nil {
 		return err
 	}
+	if err := r.ValidateResource(); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -95,6 +121,9 @@ func (r *Aloys) ValidateUpdate(old runtime.Object) error {
 	if err := r.ValidateConfigMap(); err != nil {
 		return err
 	}
+	if err := r.ValidateResource(); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -111,6 +140,9 @@ func (r *Aloys) ValidateDelete() error {
 		return err
 	}
 	if err := r.ValidateConfigMap(); err != nil {
+		return err
+	}
+	if err := r.ValidateResource(); err != nil {
 		return err
 	}
 	return nil
@@ -145,17 +177,44 @@ func (r *Aloys) ValidateIngress() error {
 }
 
 func (r *Aloys) ValidateConfigMap() error {
-	for _, y := range r.Spec.Deployment.Containers {
-		for _, v := range r.Spec.ConfigMap {
-			if v.Name == y.Name && y.MountPath == "" {
-				return errors.NewInvalid(GroupVersion.WithKind("Aloys").GroupKind(), r.Name,
-					field.ErrorList{
-						field.Invalid(field.NewPath("MountPath"),
-							r.Spec.Ingress.Host,
-							"MountPath should be set when configName set "),
-					},
+	// 	这个修改后，应该反着找，格努Containers的 mountpath找 cm，如果 cmkey不存在，就报错
+	// 	应该试试取出cm key 的值放在一个列表中，然后和每个 contraction中的 mountpath 的值进行匹配，当匹配不到的时候，就是 cm 没设置
+	var cmKey []string
+	for _, v := range r.Spec.ConfigMap {
+		cmKey = append(cmKey, v.CmKey)
+	}
+	// 	这样就是判断一个值是不是在列表中了
+	for _, k := range r.Spec.Deployment.Containers {
+		for _, m := range k.MountPath {
+			fileName := strings.Split(m, "/")
+			fileSubPath := fileName[len(fileName)-1]
+			volumeMountName := strings.Split(fileSubPath, ".")[0]
+			// 在 Golang 中，有一个排序模块sort，它里面有一个sort.Strings()函数，可以对字符串数组进行排序。同时，还有一个sort.SearchStrings()[1]函数，会用二分法在一个有序字符串数组中寻找特定字符串的索引
+			// 排序，加快查找速度
+			sort.Strings(cmKey)
+			index := sort.SearchStrings(cmKey, volumeMountName)
+			if index < len(cmKey) && cmKey[index] == volumeMountName {
+				continue
+			} else {
+				return errors.NewInvalid(GroupVersion.WithKind("Aloys").GroupKind(), r.Name, field.ErrorList{
+					field.Invalid(field.NewPath("MountPath"),
+						r.Spec.Ingress.Host,
+						"MountPath should be set when configMap key set "),
+				},
 				)
 			}
+		}
+	}
+	return nil
+}
+
+func (r *Aloys) ValidateResource() error {
+	for _, v := range r.Spec.Deployment.Containers {
+		if v.Limits.Cpu.String() == "0" && v.Request.Cpu.String() == "0" {
+			return errors.NewInvalid(GroupVersion.WithKind("Aloys").GroupKind(), r.Name, field.ErrorList{field.Invalid(field.NewPath("CPU"), v.Limits.Cpu, "Limits.Cpu or Request.Cpu must be set to one")})
+		}
+		if v.Limits.Memory.String() == "0" && v.Request.Memory.String() == "0" {
+			return errors.NewInvalid(GroupVersion.WithKind("Aloys").GroupKind(), r.Name, field.ErrorList{field.Invalid(field.NewPath("Memory"), v.Limits.Cpu, "Limits.Memory or Request.Memory must be set to one")})
 		}
 	}
 	return nil
