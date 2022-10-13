@@ -59,10 +59,13 @@ spec:
                     properties:
                       cmDate:
                         type: string
+                      cmKey:
+                        type: string
                       name:
                         type: string
                     required:
                       - cmDate
+                      - cmKey
                       - name
                     type: object
                   type: array
@@ -92,7 +95,9 @@ spec:
                             type: object
                           mountPath:
                             description: 暂时先让他可以为空 // +kubebuilder:validation:Pattern:=^/
-                            type: string
+                            items:
+                              type: string
+                            type: array
                           name:
                             type: string
                           port:
