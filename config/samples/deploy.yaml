@@ -1,6 +1,0 @@
-apiVersion: zy.tech/v1
-kind: Aloys
-metadata:
-  name: deployment
-spec:
-  replicas: 2
